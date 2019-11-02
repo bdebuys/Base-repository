@@ -1,0 +1,56 @@
+### SVO (Social Value Orientation)
+# possible values for the 6 questions used in this measure
+svo.values <- read.csv(file="SVO_values.csv", header = F, stringsAsFactors = F)
+
+# participant data
+svo <- cbind(data$Q76.3_1,data$Q76.3_2,data$Q76.3_3,data$Q76.3_4,data$Q76.3_5,data$Q76.3_6)
+
+pay.self <- matrix(NA,nrow(data),6)
+for (j in 1:nrow(data)){
+  for (i in 1:6){
+    pay.self[j,i] <- ifelse(svo[j,i]==1, svo.values[2*i-1,1], +
+    ifelse(svo[j,i]==2, svo.values[2*i-1,2], +
+    ifelse(svo[j,i]==3, svo.values[2*i-1,3], +
+    ifelse(svo[j,i]==4, svo.values[2*i-1,4], +
+    ifelse(svo[j,i]==5, svo.values[2*i-1,5], +
+    ifelse(svo[j,i]==6, svo.values[2*i-1,6], +
+    ifelse(svo[j,i]==7, svo.values[2*i-1,7], +
+    ifelse(svo[j,i]==8, svo.values[2*i-1,8], +
+    ifelse(svo[j,i]==9, svo.values[2*i-1,9], NA)))))))))
+  }
+}
+
+pay.other <- matrix(NA,nrow(data),6)
+for (j in 1:nrow(data)){
+  for (i in 1:6){
+    pay.other[j,i] <- ifelse(svo[j,i]==1, svo.values[2*i,1], +
+    ifelse(svo[j,i]==2, svo.values[2*i,2], +
+    ifelse(svo[j,i]==3, svo.values[2*i,3], +
+    ifelse(svo[j,i]==4, svo.values[2*i,4], +
+    ifelse(svo[j,i]==5, svo.values[2*i,5], +
+    ifelse(svo[j,i]==6, svo.values[2*i,6], +
+    ifelse(svo[j,i]==7, svo.values[2*i,7], +
+    ifelse(svo[j,i]==8, svo.values[2*i,8], +
+    ifelse(svo[j,i]==9, svo.values[2*i,9], NA)))))))))
+  }
+}
+
+avg.self <- rowMeans(pay.self)
+avg.other <- rowMeans(pay.other)
+SVO.idx <- atan((avg.other-50)/(avg.self-50))*180/pi
+
+## categorize scores (optional)
+# 0 = altruistic
+# 1 = prosocial
+# 2 = individualistic
+# 3 = competitive
+
+SVO.cat <- SVO.idx
+SVO.cat[SVO.idx > 57.15] <- 0           
+SVO.cat[SVO.idx < 57.15 & SVO.idx > 22.45] <- 1
+SVO.cat[SVO.idx < 22.45 & SVO.idx > -12.04] <- 2
+SVO.cat[SVO.idx < -12.04] <- 3
+
+# add to original dataset
+data <- cbind(data,SVO.idx)
+data <- cbind(data,SVO.cat)
