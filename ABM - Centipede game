@@ -1,0 +1,171 @@
+# CG agent model Current.R
+### Functions
+
+# Initialize payoff matrices and strategies
+pot_1 <- c(4,3,6,5,8,7)
+pot_2 <- c(2,5,4,7,6,9)
+strats <- c(.5,.5)  # Global Constant (Comment out "strats" in ChooseStrategy() )
+
+# Initialize strategies of A and B as vectors of zeros
+strat_A <- rep(0,6)
+strat_B <- rep(0,6)
+
+# Set up empty data frame for each full game
+setup <- function(){
+  return(data.frame(id=1:2, strategy=NA, tot_winnings=0))
+}
+
+# Choose whether to take or pass, based on pre-existing probabilistic strategy (strats)
+chooseStrategy <- function(ind){
+  #strats <- sample(x=runif(2,0,1))  # Random 
+  stratsRand <- sample(x=runif(2,0,1))
+  # 1:Take the pot, 0:Pass
+  if (strats[1] > stratsRand[1]) ind$strategy[1] <- 1 else ind$strategy[1] <- 0
+  if (strats[2] > stratsRand[2]) ind$strategy[2] <- 1 else ind$strategy[2] <- 0
+  return(ind)
+}
+
+# Choose whether to take or pass, based on pre-existing probabilistic strategy (strats)
+chooseStrategy2 <- function(ind){
+  stratsRand <- sample(x=runif(2,0,1))
+  # 1:Take the pot, 0:Pass
+  if (strat_A[1] > stratsRand[1]) ind$strategy[1] <- 1 else ind$strategy[1] <- 0
+  if (strats[2] > stratsRand[2]) ind$strategy[2] <- 1 else ind$strategy[2] <- 0
+  return(ind)
+}
+
+# Run a single game with A going first (max 10 total turns)
+A_1st <- function(ind){
+  turns <- length(pot_1)/2
+  for(i in 1:turns){
+    if(ind$strategy[1]==1) {                            # T
+      ind$tot_winnings[1] = ind$tot_winnings[1] + pot_1[2*i-1]
+      ind$tot_winnings[2] = ind$tot_winnings[2] + pot_2[2*i-1]
+      break
+    } else if(ind$strategy[2]==1) {                     # PT
+      ind$tot_winnings[1] = ind$tot_winnings[1] + pot_1[2*i]
+      ind$tot_winnings[2] = ind$tot_winnings[2] + pot_2[2*i]
+      break
+    }
+    chooseStrategy(ind)
+    # Option to split the pot after a certain number of turns without any player taking
+    if (i==turns) {
+      ind$tot_winnings[1] = ind$tot_winnings[1] + 10
+      ind$tot_winnings[2] = ind$tot_winnings[2] + 8
+    }
+  }
+  return(ind)
+}
+
+# Run a single game with B going first (max 10 total turns)
+B_1st <- function(ind){
+  turns <- length(pot_1)/2
+  for(i in 1:turns){
+    if(ind$strategy[2]==1) {                            # T
+      ind$tot_winnings[2] = ind$tot_winnings[2] + pot_1[2*i-1]
+      ind$tot_winnings[1] = ind$tot_winnings[1] + pot_2[2*i-1]
+      break
+    } else if(ind$strategy[1]==1) {                     # PT
+      ind$tot_winnings[2] = ind$tot_winnings[2] + pot_1[2*i]
+      ind$tot_winnings[1] = ind$tot_winnings[1] + pot_2[2*i]
+      break
+    }
+    ## Option to split the pot after a certain number of turns without any player taking
+    if (i==turns) {
+      ind$tot_winnings[2] = ind$tot_winnings[2] + 10
+      ind$tot_winnings[1] = ind$tot_winnings[1] + 8
+    }
+    chooseStrategy(ind)
+  }
+  return(ind)
+}
+
+# Run a single session of 20 games
+Run <- function(indDF) {#######
+  games <- 10
+  indDF <- setup()
+  dat <- matrix(NA, games, 2)
+  for(i in 1:games){
+    indDF <- chooseStrategy(indDF)
+    # Choose A or B 1st (50/50)
+    if (runif(1,0,1)>.5) indDF <- A_1st(indDF)
+    else indDF <- B_1st(indDF)
+    # Put total winnings in matrix
+    dat[i,] <- indDF$tot_winnings
+    
+    i <- i+1
+  }
+  return(indDF)
+}
+
+# Set up empty data frame for each full session
+setup2 <- function(){
+  return(data.frame(id=1:iter, A=0, B=0))
+}
+
+# Run session a number of iterations
+iter <- 50
+indDF2 <- setup2()
+dat2 <- matrix(NA, iter, 4)
+for(i in 1:iter){
+  temp <- Run(indDF2)
+  temp$strats <- strats
+  dat2[i,1] <- temp$tot_winnings[1]
+  dat2[i,2] <- round(temp$strats[1],1)
+  dat2[i,3] <- temp$tot_winnings[2]
+  dat2[i,4] <- temp$strats[2]
+  
+  ## Add learning component
+  #If A is losing, A takes more
+   # if (dat2[i,1]<dat2[i,3]) {
+   #   strats[1] <- strats[1]+.1
+   # }
+
+  # If A or B is losing, it takes more
+   #  if (dat2[i,1]<dat2[i,3]) {
+   #    strats[1] <- strats[1]+.1
+   #  }
+   #  if (dat2[i,1]>dat2[i,3]) {
+   #    strats[2] <- strats[2]+.1
+   #  }
+  
+  # If A is winning, A passes more
+   # if (dat2[i,1]>dat2[i,3]) {
+   #     strats[1] <- strats[1]-.1
+   # }
+  
+  #If A or B is winning, it passes more
+   if (dat2[i,1]<dat2[i,3]) {
+     strats[1] <- strats[1]-.1
+   }
+   if (dat2[i,1]>dat2[i,3]) {
+     strats[2] <- strats[2]-.1
+   }
+
+    # If A is losing, 50% linear random walk +/- .1
+   # if (dat2[i,1]<dat2[i,3]) {
+   #   if (runif(1,0,1)>.5) strats[1] <- strats[1]+.1
+   #   else strats[1] <- strats[1]-.1
+   # }
+  
+  
+  # Keep strats within (0,1)
+  if (strats[1]<0) strats[1]=0
+  if (strats[1]>1) strats[1]=1
+  if (strats[2]<0) strats[2]=0
+  if (strats[2]>1) strats[2]=1
+  
+  # Increment i
+  i <- i+1
+}
+
+# Plot A & B
+plot(dat2[,1], type='l', col='#EA2E49', lwd=3, xlab='time', ylab='total winnings', ylim=c(0,max(dat2)))
+#plot(dat[,1], type='l', col='#EA2E49', lwd=3, xlab='time', ylab='total winnings', ylim=c(0,50))    #Consistent y-axis for comparisons
+lines(dat2[,3], col='#77C4D3', lwd=3)
+
+
+# Print averages of A & B over the iterations
+paste("A average:", mean(dat2[,1]), "sd:", round(sd(dat2[,1]),2))
+paste("B average:", mean(dat2[,3]), "sd:", round(sd(dat2[,3]),2))
+strats
